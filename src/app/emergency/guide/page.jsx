@@ -1,7 +1,7 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 const GUIDE_TYPES = {
   passport: {
@@ -39,7 +39,10 @@ const GUIDE_TYPES = {
       { ko: "병원에 가야 합니다", en: "I need to go to the hospital" },
       { ko: "구급차를 불러주세요", en: "Please call an ambulance" },
       { ko: "통역이 필요합니다", en: "I need an interpreter" },
-      { ko: "한국어를 할 수 있는 의사가 있나요?", en: "Is there a doctor who speaks Korean?" },
+      {
+        ko: "한국어를 할 수 있는 의사가 있나요?",
+        en: "Is there a doctor who speaks Korean?",
+      },
     ],
   },
   crime: {
@@ -66,10 +69,18 @@ const GUIDE_TYPES = {
 };
 
 export default function EmergencyGuidePage() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const typeParam = searchParams.get("type");
-  const [selectedType, setSelectedType] = useState(typeParam || "");
+  const [selectedType, setSelectedType] = useState("");
+
+  // 🚫 useSearchParams 대신, URLSearchParams로 쿼리 읽기
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const typeParam = params.get("type");
+    if (typeParam && GUIDE_TYPES[typeParam]) {
+      setSelectedType(typeParam);
+    }
+  }, []);
 
   const guide = selectedType ? GUIDE_TYPES[selectedType] : null;
 
@@ -186,4 +197,3 @@ export default function EmergencyGuidePage() {
     </div>
   );
 }
-
