@@ -212,37 +212,47 @@ export default function EmergencyPage() {
               <div className="space-y-4">
                 {/* 긴급번호 */}
                 {emergencyData.emergency && (
-                  <div className="bg-white rounded-xl p-4 shadow-md">
-                    <h2 className="font-bold text-lg mb-3">🚨 긴급번호</h2>
-                    <div className="space-y-2">
-                      {Object.entries(emergencyData.emergency).map(
-                        ([key, value]) => (
-                          <button
-                            key={key}
-                            onClick={() => handleCall(value?.number)}
-                            className="w-full bg-red-50 hover:bg-red-100 p-3 rounded-lg text-left flex items-center justify-between transition-colors"
-                          >
-                            <div>
-                              <div className="font-semibold">
-                                {key === "police"
-                                  ? "경찰"
-                                  : key === "ambulance"
-                                  ? "구급차"
-                                  : key === "fire"
-                                  ? "소방"
-                                  : key}
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                {value?.number || "정보 없음"}
-                              </div>
-                            </div>
-                            <div className="text-2xl">📞</div>
-                          </button>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
+  <div className="bg-white rounded-xl p-4 shadow-md">
+    <h2 className="font-bold text-lg mb-3">🚨 긴급번호</h2>
+    <div className="space-y-2">
+      {Object.entries(emergencyData.emergency).map(([key, value]) => {
+        // value가 "112" 같은 문자열일 수도 있고,
+        // { number: "112" } 같은 객체일 수도 있음
+        const v = value || {};
+        const phoneNumber =
+          typeof v === "string"
+            ? v
+            : v.number || v.phone || "";
+
+        const label =
+          key === "police"
+            ? "경찰"
+            : key === "ambulance"
+            ? "구급차"
+            : key === "fire"
+            ? "소방"
+            : key;
+
+        return (
+          <button
+            key={key}
+            onClick={() => phoneNumber && handleCall(phoneNumber)}
+            className="w-full bg-red-50 hover:bg-red-100 p-3 rounded-lg text-left flex items-center justify-between transition-colors"
+          >
+            <div>
+              <div className="font-semibold">{label}</div>
+              <div className="text-sm text-gray-600">
+                {phoneNumber || "정보 없음"}
+              </div>
+            </div>
+            <div className="text-2xl">📞</div>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+)}
+
 
                 {/* 한국 대사관 */}
                 {emergencyData.embassy_kr && (
