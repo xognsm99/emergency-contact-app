@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { loadPack } from "../utils/loadPack";
 
 // 무료 국가 / 전체 국가 목록
-const FREE_COUNTRIES = ["JP", "US", "CN", "TH", "VN", "SG", "MY", "PH", "ID", "HK"];
+const FREE_COUNTRIES = ["KR", "JP", "US", "CN", "TH", "VN", "SG", "MY", "PH", "ID", "HK"];
 
 const ALL_COUNTRIES = [
   { code: "JP", name: "일본", flag: "🇯🇵" },
@@ -36,11 +36,7 @@ const ALL_COUNTRIES = [
 ];
 
 export default function EmergencyPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const countryParam = searchParams.get("country");
-
-  const [selectedCountry, setSelectedCountry] = useState(countryParam || "");
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [emergencyData, setEmergencyData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,6 +62,16 @@ export default function EmergencyPage() {
       setIsLoading(false);
     }
   }, [selectedCountry]);
+
+  // 👉 여기 이거 추가
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("country");
+    if (c) {
+      setSelectedCountry(c);
+    }
+  }, []);
 
   // 검색 필터
   const filteredCountries = useMemo(() => {
