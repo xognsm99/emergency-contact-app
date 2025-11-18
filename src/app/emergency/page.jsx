@@ -54,23 +54,90 @@ export default function EmergencyPage() {
   }, []);
 
   // 2) 나라 선택 시 데이터 로드
-  useEffect(() => {
-    if (!selectedCountry) return;
+useEffect(() => {
+  if (!selectedCountry) return;
 
-    setIsLoading(true);
-    try {
-      const data = loadPack(selectedCountry); // 동기 함수
-      setEmergencyData(data);
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("emergency.lastCountry", selectedCountry);
+  // emergency 데이터를 { police: {number:"112"}, ... } 형식으로 통일
+  const normalizeEmergency = (emergency) => {
+    if (!emergency) return null;
+    const result = {};
+    for (const [key, value] of Object.entries(emergency)) {
+      if (!value) {
+        result[key] = { number: "" };
+      } else if (typeof value === "string" || typeof value === "number") {
+        result[key] = { number: String(value) };
+      } else if (typeof value === "object") {
+        result[key] = {
+          ...value,
+          number: value.number || value.phone || value.value || "",
+        };
+      } else {
+        result[key] = { number: "" };
       }
-    } catch (err) {
-      console.error("데이터 로드 실패:", err);
-      setEmergencyData(null);
-    } finally {
-      setIsLoading(false);
     }
-  }, [selectedCountry]);
+    return result;
+  };
+
+  // embassy / embassy_kr 데이터를 화면에서 쓰는 형태로 통일
+  const normalizeEmbassy = (embassy_kr, embassy) => {
+    // 이미 embassy_kr 형태면 그대로 사용
+    if (embassy_kr) return embassy_kr;
+    if (!embassy) return undefined;
+
+    // phones 배열이 있는 경우
+    if (Array.isArray(embassy.phones)) {
+      return {
+        name: embassy.name || "한국 대사관",
+        address: embassy.address || "",
+        phones: embassy.phones.map((p) => ({
+          label: p.label || embassy.name || "대표번호",
+          number: p.number || p.phone || "",
+        })),
+      };
+    }
+
+    // phone 한 개만 있는 경우
+    if (embassy.phone) {
+      return {
+        name: embassy.name || "한국 대사관",
+        address: embassy.address || "",
+        phones: [
+          {
+            label: embassy.name || "대표번호",
+            number: embassy.phone,
+          },
+        ],
+      };
+    }
+
+    return undefined;
+  };
+
+  setIsLoading(true);
+  try {
+    const raw = loadPack(selectedCountry); // 동기 함수
+
+    const normalized = {
+      ...raw,
+      emergency: normalizeEmergency(raw.emergency),
+      // embassy_kr이 있으면 그걸 쓰고,
+      // 없으면 embassy 정보를 변환해서 embassy_kr로 만들어줌
+      embassy_kr: normalizeEmbassy(raw.embassy_kr, raw.embassy),
+    };
+
+    setEmergencyData(normalized);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("emergency.lastCountry", selectedCountry);
+    }
+  } catch (err) {
+    console.error("데이터 로드 실패:", err);
+    setEmergencyData(null);
+  } finally {
+    setIsLoading(false);
+  }
+}, [selectedCountry]);
+
 
   // 검색 필터링
   const filteredCountries = useMemo(() => {
