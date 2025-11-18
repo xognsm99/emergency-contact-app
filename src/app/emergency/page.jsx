@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { loadPack } from "../utils/loadPack";
 
 // 무료 국가 / 전체 국가 목록
-const FREE_COUNTRIES = ["KR", "JP", "US", "CN", "TH", "VN", "SG", "MY", "PH", "ID", "HK"];
+const FREE_COUNTRIES = ["KR","JP", "US", "CN", "TH", "VN", "SG", "MY", "PH", "ID", "HK"];
 
 const ALL_COUNTRIES = [
   { code: "JP", name: "일본", flag: "🇯🇵" },
@@ -36,21 +36,30 @@ const ALL_COUNTRIES = [
 ];
 
 export default function EmergencyPage() {
+  const router = useRouter();
+
   const [selectedCountry, setSelectedCountry] = useState("");
   const [emergencyData, setEmergencyData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 프리미엄(잠금 표시용) – 지금은 false 고정
-  const isPremium = false;
+  // 1) URL 쿼리에서 country 읽어서 초기값 설정 (/emergency?country=KR)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("country");
+    if (c) {
+      setSelectedCountry(c);
+    }
+  }, []);
 
-  // 나라 선택 시 데이터 로드
+  // 2) 나라 선택 시 데이터 로드
   useEffect(() => {
     if (!selectedCountry) return;
 
     setIsLoading(true);
     try {
-      const data = loadPack(selectedCountry);
+      const data = loadPack(selectedCountry); // 동기 함수
       setEmergencyData(data);
       if (typeof window !== "undefined") {
         window.localStorage.setItem("emergency.lastCountry", selectedCountry);
@@ -63,17 +72,7 @@ export default function EmergencyPage() {
     }
   }, [selectedCountry]);
 
-  // 👉 여기 이거 추가
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const c = params.get("country");
-    if (c) {
-      setSelectedCountry(c);
-    }
-  }, []);
-
-  // 검색 필터
+  // 검색 필터링
   const filteredCountries = useMemo(() => {
     if (!searchTerm) return ALL_COUNTRIES;
     const term = searchTerm.toLowerCase();
@@ -84,47 +83,57 @@ export default function EmergencyPage() {
     );
   }, [searchTerm]);
 
+  // 프리미엄 여부 (지금은 false 고정)
+  const isPremium = false;
+
   const handleCall = (phoneNumber) => {
     if (!phoneNumber) return;
-    window.location.href = `tel:${phoneNumber.replace(/\s+/g, "")}`;
+    const cleaned = phoneNumber.replace(/\s+/g, "");
+    if (typeof window !== "undefined") {
+      window.location.href = `tel:${cleaned}`;
+    }
   };
 
+  // 🔴 헤더의 뒤로 버튼: **무조건 홈(/)으로 이동**
   const handleBack = () => {
-    if (selectedCountry) {
-      // 상세 화면 → 리스트로
-      setSelectedCountry("");
-      setEmergencyData(null);
-      router.push("/emergency");
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
     } else {
-      // 리스트 화면 → 홈으로
       router.push("/");
     }
   };
 
-  const emergency = emergencyData?.emergency || {};
-  const embassy = emergencyData?.embassy;
+  // 상세 화면에서 "다른 국가 선택" 버튼
+  const handleSelectAnother = () => {
+    setSelectedCountry("");
+    // URL에서 country 쿼리 제거 (새로고침해도 리스트 보이도록)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("country");
+      window.history.replaceState(null, "", url.toString());
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 🔴 헤더: 항상 전체 폭 */}
-      <header className="bg-red-600 text-white sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+      {/* 헤더 (양옆 꽉 차게) */}
+      <header className="bg-red-600 text-white">
+        <div className="max-w-md mx-auto flex items-center justify-between px-4 py-3">
           <button
             onClick={handleBack}
-            className="text-white hover:bg-red-700 px-3 py-1 rounded"
+            className="text-white hover:bg-red-700 px-3 py-2 rounded"
           >
             ← 뒤로
           </button>
           <h1 className="text-lg font-bold">긴급 연락처</h1>
-          <div className="w-12" />
+          <div className="w-10" />
         </div>
       </header>
 
-      {/* 메인 콘텐츠: 가운데 정렬, 폭 고정 */}
-      <main className="max-w-md mx-auto p-4">
-        {/* 국가 리스트 화면 */}
+      <main className="max-w-md mx-auto pb-8">
+        {/* 국가 선택 리스트 화면 */}
         {!selectedCountry && (
-          <div>
+          <div className="p-4">
             <div className="mb-4">
               <input
                 type="text"
@@ -146,7 +155,17 @@ export default function EmergencyPage() {
                     onClick={() => {
                       if (isLocked) return;
                       setSelectedCountry(country.code);
-                      router.push(`/emergency?country=${country.code}`);
+
+                      // URL에 country 쿼리 세팅
+                      if (typeof window !== "undefined") {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set("country", country.code);
+                        window.history.replaceState(
+                          null,
+                          "",
+                          url.toString()
+                        );
+                      }
                     }}
                     disabled={isLocked}
                     className={`p-4 rounded-xl border-2 text-left transition-all ${
@@ -183,85 +202,105 @@ export default function EmergencyPage() {
           </div>
         )}
 
-        {/* 상세 화면 */}
+        {/* 선택된 국가 상세 화면 */}
         {selectedCountry && (
-          <div>
+          <div className="p-4">
             {isLoading ? (
               <div className="text-center py-8">로딩 중...</div>
             ) : emergencyData ? (
               <div className="space-y-4">
                 {/* 긴급번호 */}
-                <div className="bg-white rounded-xl p-4 shadow-md">
-                  <h2 className="font-bold text-lg mb-3">🚨 긴급번호</h2>
-                  <div className="space-y-2">
-                    {["police", "ambulance", "fire"].map((key) => {
-                      const number = emergency[key];
-                      const label =
-                        key === "police"
-                          ? "경찰"
-                          : key === "ambulance"
-                          ? "구급차"
-                          : "소방";
-
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => handleCall(number)}
-                          disabled={!number}
-                          className={`w-full p-3 rounded-lg text-left flex items-center justify-between transition-colors ${
-                            number
-                              ? "bg-red-50 hover:bg-red-100"
-                              : "bg-gray-100 cursor-not-allowed"
-                          }`}
-                        >
-                          <div>
-                            <div className="font-semibold">{label}</div>
-                            <div className="text-sm text-gray-600">
-                              {number || "정보 없음"}
-                            </div>
-                          </div>
-                          <div className="text-2xl">📞</div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 대사관 */}
-                {embassy && (
+                {emergencyData.emergency && (
                   <div className="bg-white rounded-xl p-4 shadow-md">
-                    <h2 className="font-bold text-lg mb-3">🏛️ 한국 대사관</h2>
-                    <div className="space-y-1">
-                      <div className="font-semibold">
-                        {embassy.name || "정보 없음"}
-                      </div>
-                      {embassy.phone && (
-                        <button
-                          onClick={() => handleCall(embassy.phone)}
-                          className="w-full bg-blue-50 hover:bg-blue-100 p-3 rounded-lg text-left flex items-center justify-between transition-colors mt-2"
-                        >
-                          <div className="text-sm text-gray-700">
-                            {embassy.phone}
-                          </div>
-                          <div className="text-2xl">📞</div>
-                        </button>
-                      )}
-                      {embassy.note && (
-                        <div className="text-xs text-gray-600 mt-1">
-                          {embassy.note}
-                        </div>
+                    <h2 className="font-bold text-lg mb-3">🚨 긴급번호</h2>
+                    <div className="space-y-2">
+                      {Object.entries(emergencyData.emergency).map(
+                        ([key, value]) => (
+                          <button
+                            key={key}
+                            onClick={() => handleCall(value?.number)}
+                            className="w-full bg-red-50 hover:bg-red-100 p-3 rounded-lg text-left flex items-center justify-between transition-colors"
+                          >
+                            <div>
+                              <div className="font-semibold">
+                                {key === "police"
+                                  ? "경찰"
+                                  : key === "ambulance"
+                                  ? "구급차"
+                                  : key === "fire"
+                                  ? "소방"
+                                  : key}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                {value?.number || "정보 없음"}
+                              </div>
+                            </div>
+                            <div className="text-2xl">📞</div>
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
                 )}
 
+                {/* 한국 대사관 */}
+                {emergencyData.embassy_kr && (
+                  <div className="bg-white rounded-xl p-4 shadow-md">
+                    <h2 className="font-bold text-lg mb-3">🏛️ 한국 대사관</h2>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="font-semibold">
+                          {emergencyData.embassy_kr.name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {emergencyData.embassy_kr.address}
+                        </div>
+                      </div>
+                      {emergencyData.embassy_kr.phones?.map((phone, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleCall(phone.number)}
+                          className="w-full bg-blue-50 hover:bg-blue-100 p-3 rounded-lg text-left flex items-center justify-between transition-colors"
+                        >
+                          <div>
+                            <div className="font-semibold">{phone.label}</div>
+                            <div className="text-sm text-gray-600">
+                              {phone.number}
+                            </div>
+                          </div>
+                          <div className="text-2xl">📞</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 병원 (옵션) */}
+                {emergencyData.contacts?.hospital && (
+                  <div className="bg-white rounded-xl p-4 shadow-md">
+                    <h2 className="font-bold text-lg mb-3">🏥 병원</h2>
+                    <button
+                      onClick={() =>
+                        handleCall(emergencyData.contacts.hospital.phone)
+                      }
+                      className="w-full bg-green-50 hover:bg-green-100 p-3 rounded-lg text-left flex items-center justify-between transition-colors"
+                    >
+                      <div>
+                        <div className="font-semibold">
+                          {emergencyData.contacts.hospital.name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {emergencyData.contacts.hospital.phone}
+                        </div>
+                      </div>
+                      <div className="text-2xl">📞</div>
+                    </button>
+                  </div>
+                )}
+
                 {/* 다른 국가 선택 */}
                 <button
-                  onClick={() => {
-                    setSelectedCountry("");
-                    setEmergencyData(null);
-                    router.push("/emergency");
-                  }}
+                  onClick={handleSelectAnother}
                   className="w-full bg-gray-200 hover:bg-gray-300 p-3 rounded-lg font-semibold transition-colors"
                 >
                   다른 국가 선택
@@ -273,11 +312,7 @@ export default function EmergencyPage() {
                   데이터를 불러올 수 없습니다.
                 </div>
                 <button
-                  onClick={() => {
-                    setSelectedCountry("");
-                    setEmergencyData(null);
-                    router.push("/emergency");
-                  }}
+                  onClick={handleSelectAnother}
                   className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg"
                 >
                   다시 선택
