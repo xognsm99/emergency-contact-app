@@ -118,17 +118,18 @@ export default function EmergencyPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 (양옆 꽉 차게) */}
       <header className="bg-red-600 text-white">
-        <div className="max-w-md mx-auto flex items-center justify-between px-4 py-3">
-          <button
-            onClick={handleBack}
-            className="text-white hover:bg-red-700 px-3 py-2 rounded"
-          >
-            ← 뒤로
-          </button>
-          <h1 className="text-lg font-bold">긴급 연락처</h1>
-          <div className="w-10" />
-        </div>
-      </header>
+  <div className="max-w-md mx-auto flex items-center justify-between px-4 py-3">
+    <a
+      href="/"
+      className="text-white hover:bg-red-700 px-3 py-2 rounded inline-flex items-center"
+    >
+      ← 뒤로
+    </a>
+    <h1 className="text-lg font-bold">긴급 연락처</h1>
+    <div className="w-10" />
+  </div>
+</header>
+
 
       <main className="max-w-md mx-auto pb-8">
         {/* 국가 선택 리스트 화면 */}
